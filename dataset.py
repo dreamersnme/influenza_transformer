@@ -136,4 +136,4 @@ class TransformerDataset(Dataset):
 
         assert len(trg_y) == target_seq_len, "Length of trg_y does not match target sequence length"
 
-        return src, trg, trg_y.squeeze(-1) # change size from [batch_size, target_seq_len, num_features] to [batch_size, target_seq_len] 
+        return src, trg, trg_y#trg_y.squeeze(-1) # change size from [batch_size, target_seq_len, num_features] to [batch_size, target_seq_len]

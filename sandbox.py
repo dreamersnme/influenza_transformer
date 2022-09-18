@@ -30,13 +30,12 @@ timestamp_col = "timestamp"
 cutoff_date = datetime.datetime(2017, 1, 1) 
 
 ## Params
-dim_val = 512
 n_heads = 8
 n_decoder_layers = 4
 n_encoder_layers = 4
-dec_seq_len = 92 # length of input given to decoder
-enc_seq_len = 153 # length of input given to encoder
-output_sequence_length = 48 # target sequence length. If hourly data and length = 48, you predict 2 days ahead
+dec_seq_len = 90 # length of input given to decoder
+enc_seq_len = 100 # length of input given to encoder
+output_sequence_length = 4 # target sequence length. If hourly data and length = 48, you predict 2 days ahead
 window_size = enc_seq_len + output_sequence_length # used to slice data into sub-sequences
 step_size = 1 # Step size, i.e. how many time steps does the moving window move at each step
 in_features_encoder_linear_layer = 2048
@@ -87,8 +86,6 @@ training_data = ds.TransformerDataset(
 i, batch = next(enumerate(training_data))
 
 src, trg, trg_y = batch
-print(src.shape)
-
 # Permute from shape [batch size, seq len, num features] to [seq len, batch size, num features]
 
 
@@ -104,14 +101,14 @@ model = tst.TimeSeriesTransformer(
 src_mask = utils.generate_square_subsequent_mask(
     dim1=output_sequence_length,
     dim2=enc_seq_len
-    )
+    ).to(cuda)
 
 # Make tgt mask for decoder with size:
 # [batch_size*n_heads, output_sequence_length, output_sequence_length]
 tgt_mask = utils.generate_square_subsequent_mask( 
     dim1=output_sequence_length,
     dim2=output_sequence_length
-    )
+    ).to(cuda)
 
 
 model = tst.TimeSeriesTransformer(
@@ -119,7 +116,7 @@ model = tst.TimeSeriesTransformer(
     dec_seq_len=enc_seq_len,
     out_seq_len =output_sequence_length,
     num_predicted_features=1,
-    batch_first = True
+    batch_first = batch_first
     ).to(cuda)
 
 # i, batch = next(enumerate(training_data))
@@ -153,6 +150,7 @@ def th_fit(predictor, dataset, loss_func, metrc, optimizer, epoch, batch, valida
                 continue
 
             train_set.append(t_set)
+
             hypothesis = predictor(src, trg, src_mask, tgt_mask)
             loss = loss_func(hypothesis, trg_y)
 
@@ -179,6 +177,8 @@ def th_fit(predictor, dataset, loss_func, metrc, optimizer, epoch, batch, valida
 
 def ScaledRMSE(scaler):
     def RMSE(yhat,y):
+        yhat = yhat.squeeze(-1)
+        y = y.squeeze(-1)
         yhat = yhat[:,-1:]
         y = y[:,-1:]
         yhat = scaler.inverse_transform(yhat.cpu())
@@ -187,9 +187,9 @@ def ScaledRMSE(scaler):
     return RMSE
 
 
-optimizer = th.optim.Adam(model.parameters(), lr=0.002)
+optimizer = th.optim.Adam(model.parameters(), lr=0.0002)
 # loss_func = nn.BCELoss()
 loss_func = nn.MSELoss().to(cuda)
 max = 100
 validation_split = 0.1
-th_fit(model, training_data, loss_func, ScaledRMSE(scaler), optimizer, epoch=max, batch=256, validataion_split=0.1)
+th_fit(model, training_data, loss_func, ScaledRMSE(scaler), optimizer, epoch=max, batch=128, validataion_split=0.1)

@@ -40,8 +40,6 @@ class PositionalEncoder(nn.Module):
 
         self.batch_first = batch_first
 
-        self.x_dim = 1 if batch_first else 0
-
         # copy pasted from PyTorch tutorial
         position = torch.arange(max_seq_len).unsqueeze(1)
         
@@ -52,9 +50,15 @@ class PositionalEncoder(nn.Module):
         pe[:, 0, 0::2] = torch.sin(position * div_term)
         
         pe[:, 0, 1::2] = torch.cos(position * div_term)
-        
+
+        if batch_first: pe = pe.permute(1,0,2)
         self.register_buffer('pe', pe)
-        
+
+    def get_pe(self , x):
+        if self.batch_first: return self.pe[:, : x.size(1)]
+        else: return self.pe[:x.size(0), :]
+
+
     def forward(self, x: Tensor) -> Tensor:
         """
         Args:
@@ -62,6 +66,9 @@ class PositionalEncoder(nn.Module):
                [enc_seq_len, batch_size, dim_val]
         """
 
-        x = x + self.pe[:x.size(self.x_dim)]
+        pos = self.get_pe(x)
+
+        x = x + pos
+
 
         return self.dropout(x)
