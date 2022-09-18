@@ -42,7 +42,7 @@ step_size = 1 # Step size, i.e. how many time steps does the moving window move 
 in_features_encoder_linear_layer = 2048
 in_features_decoder_linear_layer = 2048
 max_seq_len = enc_seq_len
-batch_first = False
+batch_first = True
 
 cuda = "cuda"
 # Define input variables 
@@ -66,11 +66,11 @@ training_indices = utils.get_indices_entire_sequence(
     step_size=step_size)
 
 trainint_datasets = training_data[input_variables].values
-# from sklearn.preprocessing import MinMaxScaler
-# scaler = MinMaxScaler(feature_range=(-1, 1))
-#
-#
-# trainint_datasets = scaler.fit_transform(trainint_datasets)
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler(feature_range=(-1, 1))
+
+
+trainint_datasets = scaler.fit_transform(trainint_datasets)
 
 cuda = "cuda"
 training_data = ds.TransformerDataset(
@@ -83,21 +83,14 @@ training_data = ds.TransformerDataset(
 # Making dataloader
 
 
+
 i, batch = next(enumerate(training_data))
 
 src, trg, trg_y = batch
 print(src.shape)
 
 # Permute from shape [batch size, seq len, num features] to [seq len, batch size, num features]
-if batch_first == False:
 
-    shape_before = src.shape
-    src = src.permute(1, 0, 2)
-    print("src shape changed from {} to {}".format(shape_before, src.shape))
-
-    shape_before = trg.shape
-    trg = trg.permute(1, 0, 2)
-    print("src shape changed from {} to {}".format(shape_before, src.shape))
 
 model = tst.TimeSeriesTransformer(
     input_size=len(input_variables),
